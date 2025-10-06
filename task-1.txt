@@ -2,3 +2,83 @@
 AD-SOYAD:
 
 Lütfen seçtiğiniz algoritmaya ait çözümü ve diğer isterleri aşağıya ekleyiniz:
+FAVORİ OYUNDA YÜKSEK SKOR ALMA ALGORİTMASI
+
+AMAÇ:
+Oyuncunun mevcut durumunu analiz ederek, oyun içinde optimum kararlarla en yüksek puanı elde etmesini sağlamak.
+
+------------------------------------------------------------
+1. BAŞLATMA (Initialization)
+------------------------------------------------------------
+BAŞLA
+  skor ← 0
+  can_sayisi ← 3
+  seviye ← 1
+  hedef_skor ← 1000
+  oyun_durumu ← "devam ediyor"
+
+------------------------------------------------------------
+2. ANA DÖNGÜ (Main Game Loop)
+------------------------------------------------------------
+WHILE (oyun_durumu = "devam ediyor") DO
+    oyuncu_hamlesi ← hamle_seç()
+    düşman_durumu ← düşman_gözlemle()
+    puan_artışı ← 0
+
+------------------------------------------------------------
+3. KARAR VERME (Decision Making with Conditions)
+------------------------------------------------------------
+    IF (düşman_durumu = "yakın") THEN
+        eğer_silah_var_mı ← silah_kontrol()
+        IF (eğer_silah_var_mı = TRUE) THEN
+            hamle_yap("saldır")
+            puan_artışı ← 50
+        ELSE
+            hamle_yap("kaç")
+            puan_artışı ← 10
+        ENDIF
+    ELSE IF (düşman_durumu = "uzak") THEN
+        hamle_yap("ilerle")
+        puan_artışı ← 20
+    ELSE
+        hamle_yap("bekle")
+    ENDIF
+
+------------------------------------------------------------
+4. PUAN GÜNCELLEME VE SEVİYE KONTROLÜ
+------------------------------------------------------------
+    skor ← skor + puan_artışı
+
+    IF (skor ≥ hedef_skor) THEN
+        seviye ← seviye + 1
+        hedef_skor ← hedef_skor * 2
+        yazdır("Yeni seviye: " + seviye)
+    ENDIF
+
+------------------------------------------------------------
+5. CAN KAYBI VE OYUN SONU KONTROLÜ
+------------------------------------------------------------
+    IF (oyuncu_çarptı_mı() = TRUE) THEN
+        can_sayisi ← can_sayisi - 1
+        yazdır("Bir can kaybedildi. Kalan can: " + can_sayisi)
+        IF (can_sayisi = 0) THEN
+            oyun_durumu ← "bitti"
+        ENDIF
+    ENDIF
+
+------------------------------------------------------------
+6. DÖNGÜ SONU VE OYUN BİTİŞİ
+------------------------------------------------------------
+ENDWHILE
+
+yazdır("Oyun bitti. Toplam skor: " + skor)
+BİTİR
+
+------------------------------------------------------------
+AÇIKLAMA
+------------------------------------------------------------
+- Koşullar (if-else): Oyuncunun çevresine ve kaynak durumuna göre stratejik karar almasını sağlar.
+- Döngü (while): Oyun süreci boyunca sürekli olarak eylem–tepki döngüsünü simüle eder.
+- Puan ve seviye sistemi: Motivasyonel geri bildirim sağlar; oyuncu ilerledikçe hedef zorlaşır.
+- Soyutlama düzeyi: Gerçek kodlama öncesi planlama safhasında kullanılabilecek şekilde genel tutulmuştur.
+

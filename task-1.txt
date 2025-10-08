@@ -1,7 +1,7 @@
-Öğrenci No:
-AD-SOYAD:
+Öğrenci No:250541023 
+AD-SOYAD:Ezgi Efsa Güleç 
 
-Lütfen seçtiğiniz algoritmaya ait çözümü ve diğer isterleri aşağıya ekleyiniz:
+
 FAVORİ OYUNDA YÜKSEK SKOR ALMA ALGORİTMASI
 
 AMAÇ:

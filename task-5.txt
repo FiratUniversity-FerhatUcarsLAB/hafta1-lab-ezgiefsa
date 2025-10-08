@@ -1,4 +1,287 @@
-Öğrenci No:
-AD-SOYAD:
+Öğrenci No:250541023 
+AD-SOYAD:Ezgi Efsa Güleç 
 
-Lütfen seçtiğiniz algoritmaya ait çözümü ve diğer isterleri aşağıya ekleyiniz:
+
+Algorithm ReduceHarmsFromSocialMedia
+// Amaç: Kullanıcının verdiği izinler ve alışkanlık verilerine göre sosyal medya kullanımından doğan zararları azaltmak
+
+Inputs:
+    Permissions         // dict: { appName: {level: "blocked|limited|allowed", dailyLimitMin: int, sessionLimitMin: int, allowedWindows: [(start,end)], frictionLevel: int} }
+    HabitProfiles       // dict: { habitName: {triggers: [...], avgSessionMin: float, vulnerabilityWindows: [...], cravingScore: float} }
+    DailyTotalBudgetMin // int: toplam izin verilen dakika (opsiyonel, izinlere göre override edilir)
+    RewardSystem        // struct defining rewards for meeting goals
+    PenaltySystem       // struct defining penalties/escalations for tekrarlı ihlaller
+    ReviewIntervalDays  // int (örn. 7) — haftalık/periodik değerlendirme
+    EmergencyOverrides  // list of allowed emergency override reasons (e.g., "work", "family")
+
+State Variables:
+    TotalTimeToday[app] = 0 for every app in Permissions
+    SessionActive = False
+    SessionApp = None
+    SessionStartTime = null
+    Log = []              // kullanım ve karar logları
+    HabitScores = copy of HabitProfiles.cravingScore
+    ConsecutiveSuccessDays = 0
+    OverridesUsed = 0
+    Day = CurrentDate()
+
+Begin
+    // Günlük döngü
+    While Day is active:
+        Event = WaitForEvent()   // örn. notification, appOpen, idle, userAction, scheduledCheck
+
+        If Event.type == "appOpen":
+            app = Event.appName
+            Call OnAppOpen(app, Event.context)
+
+        Else If Event.type == "notification":
+            source = Event.appName
+            If Permissions[source].level == "blocked" Then
+                SuppressNotification(source)
+                LogAppend("Notification suppressed", source, timestamp)
+            Else
+                If IsWithinAllowedWindow(source, CurrentTime()) == False Then
+                    SuppressNotification(source)
+                    LogAppend("Notification out of window - suppressed", source)
+                End If
+            End If
+
+        Else If Event.type == "scheduledCheck":
+            Call PeriodicChecks()
+
+        Else If Event.type == "dayEnd":
+            Call EndOfDayRoutine()
+            Day = NextDay()
+            Reset daily state variables: TotalTimeToday, SessionActive=false, SessionApp=null
+        End If
+
+    End While
+End
+
+// --- Fonksiyonlar ---
+
+Function OnAppOpen(app, context):
+    // context: how opened (tap, notification, link), time, device
+    permission = Permissions[app].level
+
+    // 1. Engelleme kontrolü
+    If permission == "blocked" Then
+        BlockAppOpen(app)
+        LogAppend("Blocked open attempt", app, context, timestamp)
+        ShowMessage("Bu uygulama şu an bloklu.")
+        Return
+
+    // 2. Zaman penceresi kontrolü
+    If Not IsWithinAllowedWindow(app, CurrentTime()) Then
+        EnforceFriction(app, "outsideWindow")
+        If UserForcesOpen() Then
+            HandleOverride(app, reason="outsideWindow")
+        Else
+            Return
+        End If
+    End If
+
+    // 3. Günlük kota kontrolü
+    remaining = Permissions[app].dailyLimitMin - TotalTimeToday[app]
+    If remaining <= 0 Then
+        EnforceFriction(app, "dailyLimitReached")
+        If UserForcesOpen() Then
+            HandleOverride(app, reason="dailyLimitExceeded")
+        Else
+            BlockAppOpen(app)
+            Return
+        End If
+    End If
+
+    // 4. Oturum limiti kontrolü
+    sessionLimit = Permissions[app].sessionLimitMin
+    If sessionLimit > 0 Then
+        StartSession(app, sessionLimit)
+    Else
+        StartSession(app, defaultSessionLimit)  // fallback
+    End If
+End Function
+
+Function StartSession(app, sessionLimit):
+    SessionActive = True
+    SessionApp = app
+    SessionStartTime = CurrentTime()
+    sessionElapsed = 0
+
+    While SessionActive:
+        Sleep(monitorInterval) // küçük aralıklarla kontrol et
+        sessionElapsed = CurrentTime() - SessionStartTime
+
+        // 1. Gerçek zamanlı kullanım izleme
+        If sessionElapsed >= sessionLimit Then
+            EnforceFriction(app, "sessionLimitReached")
+            If UserIgnoresFriction() Then
+                // kullanıcının ısrarı varsa kademeli cezalandır/limit artır
+                ApplyPenalty(app, "override_session_limit")
+                If PenaltySystem.escalateLockout Then
+                    LockAppFor(app, PenaltySystem.lockoutDuration)
+                    SessionActive = False
+                    Break
+                End If
+            Else
+                EndSession(app)
+                Break
+            End If
+        End If
+
+        // 2. Tetikleyici bazlı müdahale
+        trigger = DetectTrigger(contextualData)
+        If trigger != null Then
+            If IsHighRiskTrigger(trigger, HabitProfiles) Then
+                PromptIntervention(app, trigger)
+                If UserAcceptsIntervention() Then
+                    SuggestAlternatives(trigger)
+                    EndSession(app)
+                    Break
+                End If
+            End If
+        End If
+
+        // 3. Ani uzun kullanım tespiti (abnormal)
+        If sessionElapsed > 4 * HabitProfiles[app].avgSessionMin Then
+            Notify("Uzun kullanım tespit edildi — mola ver.")
+        End If
+
+    End While
+End Function
+
+Function EndSession(app):
+    SessionEndTime = CurrentTime()
+    duration = SessionEndTime - SessionStartTime (in minutes)
+    TotalTimeToday[app] += duration
+    LogAppend("SessionEnded", app, duration, timestamp, context)
+    UpdateHabitProfile(app, duration, context)
+    SessionActive = False
+    SessionApp = null
+    SessionStartTime = null
+
+    // Günlük hedef başarısı kontrolü
+    If Sum(TotalTimeToday[*]) <= DailyTotalBudgetMin Then
+        ConsecutiveSuccessDays += 1
+        TriggerRewardIfEligible()
+    Else
+        ConsecutiveSuccessDays = 0
+    End If
+End Function
+
+Function DetectTrigger(context):
+    // tetikleyici: bildirim, can sıkıntısı, yalnızlık, saat (gece), location, app-chain (linkten açmalar)
+    If NotificationReceivedRecently() Then Return "notification"
+    If UserIdleTime() > 5 Then Return "idle_boredom"
+    If CurrentTime() in HabitProfiles.vulnerabilityWindows Then Return "vulnerabilityWindow"
+    Return null
+End Function
+
+Function IsHighRiskTrigger(trigger, HabitProfiles):
+    // alışkanlık profiline göre tetikleyici riskini ölç
+    For each habit in HabitProfiles:
+        If trigger in habit.triggers AND HabitScores[habit] > threshold Then
+            Return True
+    Return False
+End Function
+
+Function EnforceFriction(app, reason):
+    // frictionLevel arttırarak kullanıcı davranışına sürtünme ekle
+    friction = Permissions[app].frictionLevel
+    If reason == "outsideWindow" Then
+        ShowConfirm("Bu saatte kullanmak istiyor musun? 2 defa onay gerekiyor.")
+        RequireNConfirmations(2 + friction)
+    Else If reason == "dailyLimitReached" Then
+        ShowDelayDialog("Günlük kotanız doldu. 10s bekle ve onayla.")
+        Delay(10 + friction * 5)
+    Else If reason == "sessionLimitReached" Then
+        ShowCooldown("Kısa mola: uygulama 5 dk kilitlenecek.")
+        LockAppFor(app, baseLock * friction)
+    End If
+    LogAppend("FrictionEnforced", app, reason, friction, timestamp)
+End Function
+
+Function HandleOverride(app, reason):
+    If reason in EmergencyOverrides Then
+        AllowOpenWithLog(app, reason)
+        OverridesUsed += 1
+        LogAppend("Emergency override", app, reason)
+    Else
+        If OverridesUsed >= PenaltySystem.overrideLimit Then
+            ApplyPenalty(app, "too_many_overrides")
+            BlockAppFor(app, PenaltySystem.escalationLockDuration)
+        Else
+            RequestJustificationFromUser()
+            If UserProvidesSatisfactoryJustification() Then
+                AllowOpenWithFriction(app)
+                OverridesUsed += 1
+            Else
+                BlockAppOpen(app)
+            End If
+        End If
+    End If
+End Function
+
+Function UpdateHabitProfile(app, duration, context):
+    // Alışkanlık puanını güncelle (örnek: exponential moving average)
+    habit = MatchHabitForApp(app)
+    alpha = 0.3
+    old = HabitScores[habit]
+    newScore = alpha * duration + (1 - alpha) * old
+    HabitScores[habit] = newScore
+    LogAppend("HabitUpdated", habit, old, newScore)
+
+    // adaptif kural: eğer alışkanlık güçleniyorsa friction artır
+    If newScore > old AND newScore > habit.thresholdHigh Then
+        IncreaseFrictionForApp(app)
+        If ConsecutiveHighUsageDays(app) > 3 Then
+            EscalateLimits(app)
+        End If
+    End If
+End Function
+
+Function PeriodicChecks():
+    // kısa periyodik görevler: bildirim ayarları, telefon genel modları, haftalık özet tetiklenmesi
+    If CurrentTime() == nightlyReviewTime Then
+        ApplyDoNotDisturbDuring(HabitProfiles.vulnerabilityWindows)
+    If DayOfWeek() % ReviewIntervalDays == 0 Then
+        Call WeeklyReview()
+End Function
+
+Function WeeklyReview():
+    // haftalık değerlendirme: izinleri ve limitleri optimize et
+    summary = CompileWeeklyUsage(TotalTimeToday history)
+    For each app in Permissions:
+        avg = AverageUsage(app, last 7 days)
+        If avg > Permissions[app].dailyLimitMin * 1.2 Then
+            // kullanıcı izinleri olmadan alışkanlık kötüleşiyorsa: sıkılaştır
+            Permissions[app].dailyLimitMin = max(5, Permissions[app].dailyLimitMin - 10)
+            Permissions[app].frictionLevel += 1
+            LogAppend("WeeklyReview - tightened", app, new limits)
+        Else If avg < Permissions[app].dailyLimitMin * 0.6 Then
+            // başarılıysa ödül/tolerans
+            If ConsecutiveSuccessDays >= 7 Then
+                TriggerReward(RewardSystem, user)
+            End If
+        End If
+    End For
+    // genel optimizasyon: hedefleri güncelle
+    AdjustDailyTotalBudgetBasedOn(HabitScores, summary)
+End Function
+
+Function ApplyPenalty(app, reason):
+    // PenaltySystem'e göre artan cezalar uygula: bildirim, kısıtlama, hesap verebilirlik
+    If reason == "override_session_limit" Then
+        SendAccountabilityMessage(user, app, reason)
+    Else If reason == "too_many_overrides" Then
+        BlockAppFor(app, PenaltySystem.lockoutDuration)
+        NotifyTrustedContactIfEnabled()
+    End If
+    LogAppend("PenaltyApplied", app, reason)
+End Function
+
+Function TriggerRewardIfEligible():
+    If ConsecutiveSuccessDays in RewardSystem.milestones Then
+        GiveRewardToUser(RewardSystem[ConsecutiveSuccessDays])
+        LogAppend("RewardGranted", ConsecutiveSuccessDays)
+    End If

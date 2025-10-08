@@ -1,4 +1,85 @@
-Öğrenci No:
-AD-SOYAD:
+Öğrenci No:250541023 
+AD-SOYAD:Ezgi Efsa Güleç 
 
-Lütfen seçtiğiniz algoritmaya ait çözümü ve diğer isterleri aşağıya ekleyiniz:
+------------------------------------------------------------
+KÜTÜPHANEDE KİTAP ARAMA SİSTEMİ ALGORİTMASI
+------------------------------------------------------------
+AMAÇ:
+Bir kütüphanede kullanıcı tarafından girilen kitap adı, yazar adı 
+veya ISBN numarasına göre kitap arama işlemini gerçekleştirmek.
+Sistem, kitapları sıralar ve uygun arama stratejisini kullanarak 
+aranan kitabı bulur.
+
+------------------------------------------------------------
+1. VERİ YAPISI TANIMI
+------------------------------------------------------------
+Book = {
+    title: "Simyacı",
+    author: "Paulo Coelho",
+    isbn: "9780061122415",
+    shelf: "B3"
+}
+
+Library = [Book1, Book2, Book3, ...]
+
+------------------------------------------------------------
+2. ANA ALGORİTMA
+------------------------------------------------------------
+ALGORITMA KutuphaneKitapAramaSistemi
+    GİRİŞ: 
+        Library (kitap listesi)
+        SearchKey (arama terimi)
+        SearchType ("title" / "author" / "isbn")
+
+    ÇIKIŞ:
+        Aranan kitap(lar) veya "Bulunamadı" mesajı
+
+    // 1. Kitapları sıralama (Quick Sort kullanımı)
+    FONKSIYON QuickSort(Library, left, right)
+        EĞER left < right İSE
+            pivotIndex ← Partition(Library, left, right)
+            QuickSort(Library, left, pivotIndex - 1)
+            QuickSort(Library, pivotIndex + 1, right)
+        SON
+    SON FONKSIYON
+
+    FONKSIYON Partition(Library, left, right)
+        pivot ← Library[right]
+        i ← left - 1
+        DÖNGÜ j ← left'DEN right - 1'E KADAR
+            EĞER Library[j].title < pivot.title İSE
+                i ← i + 1
+                TAKAS(Library[i], Library[j])
+            SON
+        SON DÖNGÜ
+        TAKAS(Library[i + 1], Library[right])
+        DÖNDÜR i + 1
+    SON FONKSIYON
+
+    // 2. Arama işlemi (Binary Search)
+    FONKSIYON BinarySearch(Library, SearchKey, SearchType)
+        left ← 0
+        right ← UZUNLUK(Library) - 1
+
+        DÖNGÜ left ≤ right İKEN
+            mid ← (left + right) / 2
+            current ← Library[mid]
+
+            EĞER current[SearchType] == SearchKey İSE
+                DÖNDÜR current
+            EĞER current[SearchType] < SearchKey İSE
+                left ← mid + 1
+            DEĞİLSE
+                right ← mid - 1
+            SON
+        SON DÖNGÜ
+
+        DÖNDÜR "Bulunamadı"
+    SON FONKSIYON
+
+    // 3. Ana işlem akışı
+    BAŞLA
+        QuickSort(Library, 0, UZUNLUK(Library) - 1)
+        sonuc ← BinarySearch(Library, SearchKey, SearchType)
+        YAZ sonuc
+    BİTİR

@@ -1,4 +1,65 @@
-Öğrenci No:
-AD-SOYAD:
+Öğrenci No:250541023 
+AD-SOYAD:Ezgi Efsa Güleç 
 
-Lütfen seçtiğiniz algoritmaya ait çözümü ve diğer isterleri aşağıya ekleyiniz:
+
+ALGORITHM PastaPaylasimi(pasta_miktari, kisi_sayisi):
+
+    # 1. Temel Durum (Base Case)
+    IF kisi_sayisi == 0 THEN
+        PRINT "Paylaşım yapılamaz! Kişi sayısı sıfır."
+        RETURN
+    END IF
+
+    IF pasta_miktari == 0 THEN
+        PRINT "Hiç pasta yok, herkes aç kaldı 😢"
+        RETURN
+    END IF
+
+    IF kisi_sayisi == 1 THEN
+        PRINT "Tüm pasta tek kişiye verildi."
+        RETURN
+    END IF
+
+    # 2. Eşit bölünebilirlik kontrolü
+    IF pasta_miktari MOD kisi_sayisi == 0 THEN
+        dilim_basi = pasta_miktari / kisi_sayisi
+        FOR i FROM 1 TO kisi_sayisi:
+            PRINT "Kişi", i, "=>", dilim_basi, "dilim aldı."
+        END FOR
+        RETURN
+    END IF
+
+    # 3. Böl ve Fethet Yaklaşımı
+    # Büyük problemi iki alt gruba böl
+    yarim1_kisi = FLOOR(kisi_sayisi / 2)
+    yarim2_kisi = kisi_sayisi - yarim1_kisi
+
+    yarim1_pasta = FLOOR(pasta_miktari / 2)
+    yarim2_pasta = pasta_miktari - yarim1_pasta
+
+    PRINT "Alt gruplara bölünüyor..."
+    PRINT "Grup 1:", yarim1_kisi, "kişi,", yarim1_pasta, "dilim pasta"
+    PRINT "Grup 2:", yarim2_kisi, "kişi,", yarim2_pasta, "dilim pasta"
+
+    # Rekürsif (tekrarlamalı) çağrılar
+    CALL PastaPaylasimi(yarim1_pasta, yarim1_kisi)
+    CALL PastaPaylasimi(yarim2_pasta, yarim2_kisi)
+
+    # 4. Optimizasyon Adımı (fazla kalanları yeniden dağıt)
+    kalan = pasta_miktari MOD kisi_sayisi
+    IF kalan > 0 THEN
+        PRINT kalan, "dilim kaldı! Adil dağıtım için yeniden paylaştırılıyor..."
+        FOR i FROM 1 TO kalan:
+            PRINT "Kişi", i, "fazladan 1 dilim aldı."
+        END FOR
+  
+Amaç:
+
+Bu algoritmanın amacı, verilen pasta miktarını N kişi arasında en adil şekilde paylaştırmaktır.
+
+Böl ve fethet (divide and conquer) yaklaşımıyla büyük paylaşım problemini küçük alt problemlere ayırır,
+
+her grupta eşit dağılım sağlar ve kalan parçaları optimize ederek adil sonuç üretir.
+
+
+

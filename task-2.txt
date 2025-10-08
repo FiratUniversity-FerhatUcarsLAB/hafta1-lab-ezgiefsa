@@ -1,4 +1,83 @@
-Öğrenci No:
-AD-SOYAD:
+Öğrenci No:250541023 
+AD-SOYAD:Ezgi Efsa Güleç 
 
-Lütfen seçtiğiniz algoritmaya ait çözümü ve diğer isterleri aşağıya ekleyini
+Amaç: Elimizdeki kartlarla rakibin puanını geçmek, ancak “risk” sınırını (örneğin 21 puan veya belirlenen limit) aşmamak.
+
+
+ALGORİTMA: BasitKartOyunuStratejisi
+
+BAŞLA
+
+  // 1. Başlangıç ayarları
+  oyuncu_puan ← 0
+  rakip_puan ← 0
+  risk_limiti ← 21
+  kart_destesi ← KARISTIR(1..52)
+  tur_sayacı ← 1
+
+  // 2. Başlangıç kartlarını dağıt
+  oyuncu_el ← ILK_KARTLARI_AL(kart_destesi, 2)
+  rakip_el ← ILK_KARTLARI_AL(kart_destesi, 2)
+  oyuncu_puan ← PUAN_HESAPLA(oyuncu_el)
+  rakip_puan ← PUAN_HESAPLA(rakip_el)
+
+  // 3. Oyun döngüsü
+  WHILE oyuncu_puan < risk_limiti AND tur_sayacı ≤ 10 TEKRARLA
+
+      // --- KARAR VERME MANTIĞI ---
+      EĞER oyuncu_puan < 12 İSE
+          // Düşük puan → kesinlikle kart çek
+          YENI_KART ← KART_CEK(kart_destesi)
+          oyuncu_el ← EKLE(oyuncu_el, YENI_KART)
+          oyuncu_puan ← PUAN_HESAPLA(oyuncu_el)
+
+      DEĞİLSE EĞER oyuncu_puan ≥ 12 VE oyuncu_puan < 17 İSE
+          // Orta risk → rakibin durumunu değerlendir
+          EĞER TAHMIN_ET(rakip_el) > 17 İSE
+              // Rakip güçlü görünüyorsa risk al
+              YENI_KART ← KART_CEK(kart_destesi)
+              oyuncu_el ← EKLE(oyuncu_el, YENI_KART)
+          DEĞİLSE
+              // Rakip zayıfsa bekle
+              GEÇ
+          BİTİR_EĞER
+
+      DEĞİLSE
+          // Puan yüksek → risk alma
+          GEÇ
+      BİTİR_EĞER
+
+
+      // --- RAKİP HAREKETİNİ ÖNGÖRME ---
+      EĞER rakip_puan < 16 İSE
+          rakip_el ← EKLE(rakip_el, KART_CEK(kart_destesi))
+          rakip_puan ← PUAN_HESAPLA(rakip_el)
+      BİTİR_EĞER
+
+      // --- RİSK ANALİZİ ---
+      EĞER oyuncu_puan > risk_limiti İSE
+          YAZ("Oyuncu yandı! Kaybetti.")
+          ÇIK
+      DEĞİLSE EĞER rakip_puan > risk_limiti İSE
+          YAZ("Rakip yandı! Oyuncu kazandı.")
+          ÇIK
+      DEĞİLSE
+          // Henüz bitmedi, sonraki tura geç
+          tur_sayacı ← tur_sayacı + 1
+      BİTİR_EĞER
+
+  SONRAKİ
+
+  // --- OYUN SONU DEĞERLENDİRME ---
+  EĞER oyuncu_puan ≤ risk_limiti VE rakip_puan ≤ risk_limiti İSE
+      EĞER oyuncu_puan > rakip_puan İSE
+          YAZ("Oyuncu kazandı!")
+      DEĞİLSE EĞER oyuncu_puan = rakip_puan İSE
+          YAZ("Berabere!")
+      DEĞİLSE
+          YAZ("Rakip kazandı!")
+      BİTİR_EĞER
+  BİTİR_EĞER
+
+BİTİR
+
